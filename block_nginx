@@ -1,0 +1,86 @@
+server {
+    listen 80;
+    server_name _;
+
+    # Bắt cả lỗi 404 từ backend app gửi về
+    proxy_intercept_errors on;
+    error_page 404 /404.html;
+
+    # Điều hướng trang gốc / về app mặc định (ví dụ app1)
+    location = / {
+        return 301 /app1/;
+    }
+
+    # App 1 (khớp cả /app1 lẫn /app1/...)
+    location ^~ /app1 {
+        proxy_pass http://127.0.0.1:8080/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # App 2
+    location ^~ /app2 {
+        proxy_pass http://127.0.0.1:8081/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # App 3
+    location ^~ /app3 {
+        proxy_pass http://127.0.0.1:8082/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Trang lỗi nội bộ
+    location = /404.html {
+        root /var/www/my-web/html;
+        internal;
+    }
+
+
+server {
+    # 1. Cổng lắng nghe (80 là cổng chuẩn HTTP mặc định)
+    listen 80;
+    listen [::]:80; # Hỗ trợ IPv6
+
+    # 2. Tên miền hoặc địa chỉ IP của VPS
+    server_name demo-devops.com www.demo-devops.com 192.168.1.100;
+
+    # 3. Đường dẫn tuyệt đối đến thư mục chứa mã nguồn HTML/CSS
+    root /var/www/my-static-web;
+
+    # 4. Tệp tin mặc định phục vụ khi người dùng vào trang chủ
+    index index.html index.htm;
+
+    # 5. Định tuyến xử lý request
+    location / {
+        # Thử tìm file theo đúng URL ($uri), nếu không có thử tìm thư mục ($uri/),
+        # Nếu vẫn không thấy thì trả về lỗi 404 (hoặc trỏ về /index.html nếu là SPA React/Vue)
+        try_files $uri $uri/ =404;
+    }
+
+    # 6. Tối ưu bộ nhớ Cache cho các tệp tĩnh (CSS, JS, Ảnh)
+    location ~* \.(css|js|jpg|jpeg|png|gif|ico|svg|woff2)$ {
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
+    }
+
+    # 7. Trang thông báo lỗi tùy biến (Custom Error Page)
+    error_page 404 /404.html;
+    location = /404.html {
+        internal;
+    }
+}
+Chỉ thị (Directive)	Ý nghĩa cốt lõi cần nhớ khi làm bài
+listen	Khai báo cổng TCP mà Nginx tiếp nhận kết nối (HTTP dùng cổng 80, HTTPS dùng cổng 443).
+server_name	Định danh trang web: domain hoặc IP. Nginx so khớp trường Host trong header request với directive này để biết phải phục vụ website nào.
+root	Thư mục chứa mã nguồn trên ổ cứng VPS. Nếu request là /style.css, Nginx tìm ở /var/www/my-static-web/style.css.
+index	Tên file hiển thị đầu tiên khi client không chỉ định tên file cụ thể.
+try_files $uri $uri/ =404	Cực kỳ quan trọng: Giúp kiểm tra xem file có tồn tại trên đĩa không trước khi trả về mã lỗi.}
