@@ -1,0 +1,132 @@
+📂 PHẦN 1: LINUX SERVER & CÂU LỆNH DEVOPS CƠ BẢN
+Bản chất hệ thống:
+
+Linux không phân chia ổ C, D mà quy về mọi thứ là tệp tin (Everything is a file), bắt đầu từ gốc / (Root).
+
+Đường dẫn tuyệt đối: Bắt đầu bằng / (vd: /var/www/html).
+
+Đường dẫn tương đối: Bắt đầu từ vị trí hiện tại (./ hoặc ../).
+
+Các thư mục cốt lõi:
+
+/etc: Chứa file cấu hình (Nginx, SSH, UFW...).
+
+/var: Dữ liệu biến động (/var/www chứa mã nguồn web, log hệ thống).
+
+/root & /home: Thư mục cá nhân của Admin & User thường.
+
+Các lệnh thao tác chính:
+
+Định hướng/Xem: pwd (xem vị trí), cd (di chuyển, cd - để quay lại vị trí ngay trước đó), ls -lah (xem danh sách file chi tiết & file ẩn).
+
+Tạo/Đọc/Đội: touch (tạo file rỗng), mkdir -p (tạo thư mục kèm chuỗi thư mục cha), cat (xem file ngắn), less (xem file dài), tail -f (theo dõi log thời gian thực - rất quan trọng), nano/vim (trình soạn thảo).
+
+Sao chép/Xóa: cp -r (co-py thư mục), mv (di chuyển/đổi tên), rm -rf (xóa vĩnh viễn không qua thùng rác – cảnh báo nguy hiểm).
+
+Tìm kiếm: find (tìm file/folder), grep -rni (tìm chuỗi văn bản trong file), | (pipe - đẩy output lệnh trước làm input lệnh sau).
+
+Phân quyền (chmod & chown):
+
+Đối tượng: Owner (u) - Group (g) - Others (o).
+
+Quyền: r (Read=4), w (Write=2), x (Execute=1).
+
+Mã quyền phổ biến: 755 (Thư mục web/Script execution), 644 (File tĩnh HTML/CSS), 400/600 (File bảo mật SSH key, .env), 777 (Cực kỳ nguy hiểm, cấm dùng trên Production).
+
+Lệnh: chmod 755 <path> (đổi quyền), chown -R www-data:www-data <path> (đổi chủ sở hữu).
+
+🌿 PHẦN 2: GIT FLOW & XỬ LÝ MERGE CONFLICT
+Mô hình Git Flow (5 loại nhánh):
+
+main: Mã nguồn chạy thật trên Production (luôn gắn tag phiên bản v1.0.0).
+
+develop: Nhánh tích hợp trung tâm chứa code mới nhất chuẩn bị phát hành.
+
+feature/*: Tách từ develop để làm tính năng mới, xong merge lại develop.
+
+release/*: Tách từ develop để chốt bản release, chỉ fix lỗi nhỏ; khi xong merge vào CẢ main VÀ develop.
+
+hotfix/*: Tách từ main để sửa lỗi khẩn cấp Production; khi xong bắt buộc merge vào CẢ main VÀ develop.
+
+Lệnh Git Flow cốt lõi:
+
+Dùng git merge --no-ff khi hợp nhất nhánh để giữ lại lịch sử commit trực quan.
+
+Luôn kéo code mới (git pull) trước khi tạo nhánh hoặc merge.
+
+Xử lý xung đột (Merge Conflict):
+
+Dấu hiệu: Xuất hiện trạng thái (branch|MERGING) và các ký hiệu <<<<<<< HEAD, =======, >>>>>>>.
+
+Quy trình 5 bước:
+
+Chạy git status xem file xung đột.
+
+Mở file chọn giữ/sửa code phù hợp.
+
+Xóa bỏ hoàn toàn các ký hiệu đánh dấu xung đột (<<<<<<<, =======, >>>>>>>).
+
+Đánh dấu đã sửa xong: git add <file>.
+
+Commit hoàn tất: git commit -m "..." và git push.
+
+Lệnh hủy merge khẩn cấp: git merge --abort (khôi phục nguyên trạng ban đầu).
+
+🌐 PHẦN 3: NGINX & QUY TRÌNH DEPLOY WEB HTML
+Kiến trúc Nginx:
+
+Là Web Server, Reverse Proxy & Load Balancer tốc độ cao chạy trên kiến trúc hướng sự kiện bất đồng bộ (Asynchronous Event-driven), xử lý hàng nghìn kết nối đồng thời với rất ít RAM.
+
+Quản lý & Cấu trúc:
+
+nginx -t (kiểm tra cú pháp config - bắt buộc chạy trước khi reload).
+
+systemctl reload nginx (nạp lại config không làm ngắt kết nối người dùng - Zero Downtime).
+
+Cấu hình lưu ở /etc/nginx/sites-available/, muốn chạy phải tạo liên kết mềm (ln -s) sang /etc/nginx/sites-enabled/.
+
+8 Bước Deploy Web tĩnh có sẵn trên VPS:
+
+Cài đặt Nginx: sudo apt install nginx.
+
+Tạo thư mục web root: sudo mkdir -p /var/www/my-static-web.
+
+Copy file HTML có sẵn vào: sudo cp -r ~/my-website/* /var/www/my-static-web/.
+
+Phân quyền cho Nginx đọc file: sudo chown -R www-data:www-data /var/www/my-static-web và chmod 755.
+
+Tạo file Virtual Host tại /etc/nginx/sites-available/my-static-web.conf (chỉ định root, server_name, index).
+
+Tạo symlink sang sites-enabled: sudo ln -s /etc/nginx/sites-available/my-static-web.conf /etc/nginx/sites-enabled/.
+
+Test cú pháp và reload: sudo nginx -t && sudo systemctl reload nginx.
+
+Truy cập IP VPS trên trình duyệt để kiểm tra kết quả.
+
+Mã lỗi Nginx hay gặp:
+
+403 Forbidden: Sai phân quyền folder hoặc thiếu file index.html.
+
+404 Not Found: Sai đường dẫn root hoặc file không tồn tại.
+
+502 Bad Gateway: Lỗi khi làm Reverse Proxy nhưng dịch vụ Backend chưa chạy.
+
+🛡️ PHẦN 4: TƯỜNG LỬA UFW (UNCOMPLICATED FIREWALL)
+Nguyên tắc hoạt động: Chặn toàn bộ kết nối VÀO (Deny incoming), mở toàn bộ kết nối RA (Allow outgoing).
+
+QUY TẮC SỐNG CÒN: Phải mở cổng SSH (port 22) TRƯỚC KHI bật UFW để không bị khóa out khỏi VPS.
+
+Bash
+sudo ufw allow 22/tcp  # Mở cổng SSH trước
+sudo ufw enable        # Bật tường lửa sau
+Cấu hình mở cổng Web Nginx:
+
+Khuyên dùng profile tích hợp: sudo ufw allow 'Nginx Full' (Mở cả cổng HTTP 80 và HTTPS 443).
+
+Quản lý quy tắc:
+
+Xem danh sách đánh số: sudo ufw status numbered.
+
+Xóa quy tắc theo số thứ tự: sudo ufw delete <số_thứ_tự>.
+
+Chặn/Cho phép IP cụ thể: sudo ufw deny from <IP>, sudo ufw allow from <IP> to any port 22 proto tcp.
