@@ -1,0 +1,99 @@
+Tường Lửa UFW (Uncomplicated Firewall) Trên Linux VPS
+Lá chắn an ninh mạng bảo vệ máy chủ, kiểm soát lưu lượng và mở cổng an toàn cho Nginx
+
+Đã học xong phần 4
+🌐
+4.1 Khái Niệm & Vai Trò Của Tường Lửa UFW Trong DevOps
+UFW (Uncomplicated Firewall) là công cụ quản lý tường lửa mặc định và phổ biến nhất trên các máy chủ Ubuntu/Debian. Bản chất UFW là một giao diện dòng lệnh thân thiện được xây dựng phía trên iptables phức tạp của nhân hệ điều hành Linux (Linux Kernel Netfilter).
+
+Nguyên tắc mặc định an toàn của UFW:
+• Deny incoming: Tự động chặn TẤT CẢ các kết nối từ bên ngoài Internet đi VÀO máy chủ.
+• Allow outgoing: Cho phép máy chủ gửi kết nối ĐI RA ngoài bình thường (để cập nhật gói apt, tải mã nguồn).
+
+Vì sao DevOps bắt buộc phải cấu hình UFW:
+Ngăn chặn hacker quét cổng (Port Scanning), chống tấn công từ chối dịch vụ (DDoS), bảo vệ các dịch vụ nhạy cảm như MySQL (3306), Redis (6379), MongoDB (27017) không bị truy cập trái phép.
+
+⚡
+4.2 Lệnh Kiểm Tra Trạng Thái & Bật/Tắt Tường Lửa
+Terminal: Các lệnh trạng thái UFW
+Sao chép
+# 1. Kiểm tra trạng thái hiện tại của tường lửa (Status):
+sudo ufw status
+# Kết quả có thể là: "Status: inactive" (đang tắt) hoặc "Status: active" (đang bật)
+
+# 2. Xem chi tiết trạng thái kèm chính sách mặc định (Verbose):
+sudo ufw status verbose
+
+# 3. Nạp lại cấu hình tường lửa sau khi chỉnh sửa rule:
+sudo ufw reload
+
+# 4. Tạm thời tắt tường lửa khi cần debug kết nối mạng:
+sudo ufw disable
+🚨
+4.3 QUY TẮC SỐNG CÒN: Mở Cổng SSH (Port 22) Trước Khi Bật Tường Lửa
+⚠️
+CẢNH BÁO BỊ KHÓA NGOÀI MÁY CHỦ (LOCKED OUT OF VPS):
+Khi bạn gõ sudo ufw enable, nếu bạn CHƯA mở cổng SSH (mặc định là cổng 22), tường lửa sẽ lập tức chặn toàn bộ kết nối SSH đang có! Bạn sẽ bị ngắt kết nối và KHÔNG THỂ SSH VÀO LẠI MÁY CHỦ ĐƯỢC NỮA, chỉ còn cách đăng nhập vào Console nhà cung cấp VPS để khôi phục!
+Terminal: Trình tự kích hoạt UFW an toàn tuyệt đối
+Sao chép
+# BƯỚC 1: Luôn luôn mở cổng SSH TRƯỚC:
+sudo ufw allow 22/tcp
+# (Hoặc lệnh tương đương: sudo ufw allow ssh)
+
+# BƯỚC 2: Sau khi đã mở port 22 thành công, mới tiến hành BẬT tường lửa:
+sudo ufw enable
+# Nhấn 'y' khi terminal hỏi xác nhận: "Command may disrupt existing ssh connections. Proceed with operation (y|n)?"
+🔓
+4.4 Mở Cổng Dịch Vụ Web Cho Nginx (Port 80, 443 & App Profile)
+Để người dùng từ Internet có thể truy cập vào website Nginx của bạn, bạn cần mở cổng giao thức Web tương ứng:
+
+Terminal: Mở cổng Nginx trên UFW
+Sao chép
+# CÁCH 1: Mở cổng theo số cổng và giao thức:
+sudo ufw allow 80/tcp   # Cho phép truy cập HTTP thông thường
+sudo ufw allow 443/tcp  # Cho phép truy cập bảo mật HTTPS
+
+# CÁCH 2 (Khuyên dùng): Sử dụng Application Profile có sẵn của Nginx:
+# Xem danh sách các ứng dụng được đăng ký với UFW:
+sudo ufw app list
+# Sẽ thấy 3 profile của Nginx:
+# • 'Nginx HTTP' : Chỉ mở cổng 80
+# • 'Nginx HTTPS': Chỉ mở cổng 443
+# • 'Nginx Full' : Mở CẢ HAI cổng 80 và 443 (Khuyên dùng nhất!)
+
+sudo ufw allow 'Nginx Full'
+🎯
+4.5 Kiểm Soát Truy Cập Theo Địa Chỉ IP (Allow / Deny IP)
+Terminal: Lệnh phân quyền IP trên UFW
+Sao chép
+# 1. Chặn đứng một địa chỉ IP có hành vi tấn công, spam (Blacklist):
+sudo ufw deny from 192.168.1.150
+
+# 2. Chặn cả một dải mạng IP (Subnet):
+sudo ufw deny from 192.168.1.0/24
+
+# 3. Chỉ cho phép DUY NHẤT địa chỉ IP của bạn được phép SSH vào cổng 22 (Bảo mật tối đa):
+sudo ufw allow from 14.161.20.55 to any port 22 proto tcp
+
+# 4. Cho phép một server nội bộ truy cập cổng Database MySQL (3306):
+sudo ufw allow from 10.0.0.5 to any port 3306
+🗑️
+4.6 Quản Lý, Xem Danh Sách Đánh Số & Xóa Quy Tắc (Numbered Rules)
+Khi muốn xóa một quy tắc đã thêm sai, cách an toàn và chuẩn xác nhất là dùng số thứ tự:
+
+Terminal: Quản lý và xóa rule UFW
+Sao chép
+# BƯỚC 1: Hiển thị danh sách quy tắc kèm SỐ THỨ TỰ:
+sudo ufw status numbered
+# Kết quả mẫu:
+#      To                         Action      From
+#      --                         ------      ----
+# [ 1] 22/tcp                     ALLOW IN    Anywhere
+# [ 2] Nginx Full                 ALLOW IN    Anywhere
+# [ 3] 8080/tcp                   ALLOW IN    Anywhere
+
+# BƯỚC 2: Xóa quy tắc theo đúng số thứ tự trong ngoặc vuông (Ví dụ xóa rule số 3):
+sudo ufw delete 3
+
+# BƯỚC 3: Nếu muốn RESET toàn bộ tường lửa về cài đặt ban đầu của nhà sản xuất:
+sudo ufw reset
