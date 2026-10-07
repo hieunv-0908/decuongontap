@@ -1,0 +1,89 @@
+Bước 1: Cài đặt và kích hoạt dịch vụ Nginx trên VPS
+Kết nối SSH vào VPS bằng PuTTY/Terminal: ssh user@your_vps_ip và cài đặt Nginx:
+
+Bash
+Sao chép
+sudo apt update && sudo apt install -y nginx
+sudo systemctl enable nginx
+sudo systemctl status nginx
+Bước 2: Tạo thư mục Web Root trên Nginx
+Tạo thư mục dành riêng để chứa mã nguồn website tĩnh tại phân vùng chuẩn /var/www/:
+
+Bash
+Sao chép
+sudo mkdir -p /var/www/my-static-web
+Bước 3: Đưa file HTML có sẵn trên VPS vào thư mục Web Root
+Tùy thuộc vào việc file HTML của bạn đang ở đâu trên VPS, chọn 1 trong 2 cách sau:
+
+Bash: Đưa file HTML có sẵn vào thư mục web
+Sao chép
+# CÁCH 1: Nếu bạn đã có sẵn thư mục chứa file HTML (ví dụ tại ~/my-website/):
+# Dùng lệnh cp -r để sao chép toàn bộ file vào thư mục web root:
+sudo cp -r ~/my-website/* /var/www/my-static-web/
+
+# CÁCH 2: Nếu chưa có, tạo trực tiếp file index.html mẫu có sẵn bằng lệnh Linux:
+sudo bash -c 'cat << "EOF" > /var/www/my-static-web/index.html
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Ứng Dụng Web HTML PTIT DevOps</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 50px; background: #f8fafc; }
+        h1 { color: #2563eb; }
+        p { color: #475569; font-size: 1.1rem; }
+    </style>
+</head>
+<body>
+    <h1>🚀 Triển Khai HTML Lên Nginx Thành Công!</h1>
+    <p>File HTML có sẵn trên máy VPS đã được Nginx phục vụ hoàn hảo.</p>
+</body>
+</html>
+EOF'
+
+# Kiểm tra lại xem file đã có mặt trong thư mục chưa:
+ls -la /var/www/my-static-web
+Bước 4: Phân quyền sở hữu tệp cho Nginx (www-data)
+Đây là bước quan trọng nhất để tránh lỗi 403 Forbidden. Cần cấp quyền sở hữu thư mục cho người dùng hệ thống www-data:
+
+Bash
+Sao chép
+sudo chown -R www-data:www-data /var/www/my-static-web
+sudo chmod -R 755 /var/www/my-static-web
+Bước 5: Tạo file cấu hình Virtual Host Nginx mới
+Tạo file cấu hình tại thư mục sites-available:
+
+Bash
+Sao chép
+sudo nano /etc/nginx/sites-available/my-static-web.conf
+Dán nội dung cấu hình Virtual Host trỏ đúng đường dẫn root /var/www/my-static-web;:
+
+Nginx Virtual Host Config
+Sao chép
+server {
+    listen 80;
+    server_name _; # Dấu _ chấp nhận mọi tên miền hoặc IP của VPS
+
+    root /var/www/my-static-web;
+    index index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+Bước 6: Kích hoạt Virtual Host bằng liên kết mềm (Symbolic Link)
+Tạo symlink từ sites-available sang sites-enabled:
+
+Bash
+Sao chép
+sudo ln -s /etc/nginx/sites-available/my-static-web.conf /etc/nginx/sites-enabled/
+Bước 7: Kiểm tra cú pháp an toàn và Reload Nginx
+Kiểm tra tính hợp lệ của cú pháp cấu hình trước khi nạp lại dịch vụ:
+
+Bash
+Sao chép
+sudo nginx -t
+# Khi thấy output "syntax is ok" và "test is successful", tiến hành reload:
+sudo systemctl reload nginx
+Bước 8: Kiểm tra thành quả truy cập trên trình duyệt
+Mở trình duyệt trên máy tính cá nhân gõ địa chỉ IP VPS của bạn: http://<IP_VPS> (ví dụ: http://103.142.25.10). Bạn sẽ thấy nội dung file HTML có sẵn trên VPS được hiển thị hoàn chỉnh!
